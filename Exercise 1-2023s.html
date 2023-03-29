@@ -1,0 +1,103 @@
+<html><head><style>body {
+   color: black;
+}
+</style></head><body><h1 id="exercise-1-text-processing-fundamentals-using-mapreduce-100p-">Exercise 1: Text Processing Fundamentals using MapReduce (100p)</h1>
+<p>Data-intensive Computing 2023S; v1.1</p>
+<p>Submission Deadline: <strong>April 27, 2023  (23:59)</strong></p>
+<h2 id="goal">Goal</h2>
+<p>In this assignment, we will apply basic MapReduce programming techniques to process large text corpora.</p>
+<h2 id="preliminaries">Preliminaries</h2>
+<p>You need to achieve a minimum of 35 points on every individual exercise.</p>
+<h2 id="environment">Environment</h2>
+<p>You will be using your account on the 12-node Hadoop Cluster <code>ssh01.lbd.hpc.tuwien.ac.at</code>. Please use your SSH client of choice to connect to the cluster.</p>
+<p>You can implement and compile your MapReduce programs either on the cluster or, more conveniently, use your Python IDE of choice to develop your MapReduce programs locally and transfer the files to the cluster.</p>
+<p>You can use the python-based [mrjob] (<a href="https://mrjob.readthedocs.io/en/latest/#">https://mrjob.readthedocs.io/en/latest/#</a>)  implementation as introduced in class (recommended) or the native Java-based alternative.</p>
+<p><strong>Act responsibly on the login node!</strong> Do not &quot;probe&quot; the data with trial and error using non-MapReduce jobs run locally. It will slow down the cluster for everyone. Keep an eye on the resources your jobs are using and kill them if necessary. 
+<strong>Do NOT wait for your experiments until the last moment</strong> If everyone launches their jobs a day before deadline, the cluster might experience resource starvation and you might not able to complete the assignment. </p>
+<p><strong>You are working on shared infrastructure</strong>, expect that there will be cluster related issues (downtime, ssh node issues). </p>
+<h2 id="dataset-used">Dataset used</h2>
+<p>In this exercise, we will be using the <a href="https://nijianmo.github.io/amazon/index.html"><em>Amazon Review Dataset 2014</em></a>,  which contains 142.8 million reviews from 24 product categories. The new releases can be found here (<a href="https://cseweb.ucsd.edu//~jmcauley/datasets.html">https://cseweb.ucsd.edu//~jmcauley/datasets.html</a>).
+The data set has already been prepared for the assignment and is available in a publicly readable <strong>HDFS directory</strong> on the cluster.
+For development, we provide a smaller set, to be found at:</p>
+<p>hdfs:///user/dic23_shared/amazon-reviews/full/reviews_devset.json</p>
+<p>A copy for local development can also be found on TUWEL.
+This file contains a 0.1% sample of a preprocessed version of the full Amazon review data set combined over all categories and extended with category information in JSON format.</p>
+<p>Note that evaluation of submissions will be performed on the full dataset (56gb), to highlight the efficiency of implementations. The full data set can be accessed at</p>
+<p>hdfs:///user/dic23_shared/amazon-reviews/full/reviewscombined.json</p>
+<p>for testing purposes. However, act responsibly with the available resources.</p>
+<h3 id="file-format">File format</h3>
+<p>In the file, each line corresponds to a review in JSON format. The following entries are contained in each dictionary:</p>
+<ul>
+<li><strong>reviewerID</strong> - <code>string</code> - the ID of the author of the review</li>
+<li><strong>asin</strong> - <code>string</code> - unique product identifier</li>
+<li><strong>reviewerName</strong> - <code>string</code> - name of the reviewer</li>
+<li><strong>helpful</strong> - <code>array of two integers [a,b]</code> - helpfulness rating of the review: <code>a</code> out of <code>b</code> customers found the review helpful</li>
+<li><strong>reviewText</strong> - <code>string</code> - the content of the review; this is the text to be processed</li>
+<li><strong>overall</strong> - <code>float</code> - rating given to product <strong>asin</strong> by reviewer <strong>reviewerID</strong></li>
+<li><strong>summary</strong> - <code>string</code> - the title of the review</li>
+<li><strong>unixReviewTime</strong> - <code>integer</code> - timestamp of when review was created in UNIX format</li>
+<li><strong>reviewTime</strong> - <code>string</code> - date when review was created in human readable format</li>
+<li><strong>category</strong> - <code>string</code> - the category that the product belongs to</li>
+</ul>
+<p>For reference, the first entry in the file reads as follows:   </p>
+<pre><code>{<span class="hljs-attr">"reviewerID"</span>: <span class="hljs-string">"A2VNYWOPJ13AFP"</span>, <span class="hljs-attr">"asin"</span>: <span class="hljs-string">"0981850006"</span>, <span class="hljs-attr">"reviewerName"</span>: <span class="hljs-string">"Amazon Customer \"carringt0n\""</span>, <span class="hljs-attr">"helpful"</span>: [<span class="hljs-number">6</span>, <span class="hljs-number">7</span>], <span class="hljs-attr">"reviewText"</span>: <span class="hljs-string">"This was a gift for my other husband.  He's making us things from it all the time and we love the food.  Directions are simple, easy to read and interpret, and fun to make.  We all love different kinds of cuisine and Raichlen provides recipes from everywhere along the barbecue trail as he calls it. Get it and just open a page.  Have at it.  You'll love the food and it has provided us with an insight into the culture that produced it. It's all about broadening horizons.  Yum!!"</span>, <span class="hljs-attr">"overall"</span>: <span class="hljs-number">5.0</span>, <span class="hljs-attr">"summary"</span>: <span class="hljs-string">"Delish"</span>, <span class="hljs-attr">"unixReviewTime"</span>: <span class="hljs-number">1259798400</span>, <span class="hljs-attr">"reviewTime"</span>: <span class="hljs-string">"12 3, 2009"</span>, <span class="hljs-attr">"category"</span>: <span class="hljs-string">"Patio_Lawn_and_Garde"</span>}
+</code></pre><h2 id="task">Task</h2>
+<p>As a preparation step for text classification, we want to select terms that discriminate well between categories.
+Write MapReduce jobs that calculate chi-square values for the terms in the review dataset.</p>
+<p>For preprocessing, make sure to perform the following steps:</p>
+<ul>
+<li><strong>Tokenization</strong> to unigrams, using whitespaces, tabs, digits, and the characters ()[]{}.!?,;:+=-_&quot;&#39;`~#@&amp;*%€$§\/ as delimiters</li>
+<li><strong>Case folding</strong></li>
+<li><strong>Stopword filtering</strong>: use the stop word list [on TUWEL] (stopwords.txt) . In addition, filter out all tokens consisting of only one character.</li>
+</ul>
+<p>Write MapReduce jobs that efficiently</p>
+<ul>
+<li><strong>Calculate chi-square values</strong> for all unigram terms for each category</li>
+<li><strong>Order the terms</strong> according to their value per category and preserve the top 75 terms per category</li>
+<li><strong>Merge the lists</strong> over all categories</li>
+</ul>
+<h2 id="output">Output</h2>
+<ul>
+<li><p>Produce a file <code>output.txt</code> from the development set that contains the following:</p>
+<ul>
+<li>One line for each product category (categories in alphabetic order), that contains the top 75 most discriminative terms for the category according to the chi-square test in descending order, in the following format: <code>&lt;category name&gt; term_1st:chi^2_value term_2nd:chi^2_value ... term_75th:chi^2_value</code></li>
+<li>One line containing the merged dictionary (all terms space-separated and ordered alphabetically)</li>
+</ul>
+</li>
+<li><p>Produce a <code>report.pdf</code>, that contains detailed report inlcuding atleast four sections (1. Introduction,  2. Problem Overview, 3. Methodology and Approach, and 4. Conclusions). The Methodology and Approach section should have a figure  <strong>illustrating your strategy and pipeline in one figure</strong> (1 page maximum) that shows the data flow clearly and indicate the chosen <code>&lt;key,value&gt;</code> design (all input, intermediary, and output pairs).  The overall report should not exceed more than 8 pages (A4 size). </p>
+</li>
+</ul>
+<p><strong>Important notes:</strong></p>
+<ul>
+<li><p>Efficiency of the implementation is a crucial aspect of this assignment. Consider carefully how you design your implementation in order to avoid unnecessary overheads and calculations while achieving the expected final results. As stated above, evaluation will be carried out on the full data set. Solutions that do not produce a result within a given timeframe will be considered to be inefficient. For reference, the best times obtained in previous semesters are under 20 minutes for a Python implementation and under 5 for a Java implementation.</p>
+</li>
+<li><p>For all parts, make sure to <strong>document all code</strong> including an explanation for the method signatures, including an explanation of the <strong><code>&lt;k,v&gt;</code> pairs</strong> and all <strong>classes provided (map, sort, combine, partition, reduce etc.)</strong>.</p>
+</li>
+<li><p>Make sure that all paths are  <strong>relative</strong>. <strong>Your solution will be graded based on the submission to TUWEL, NOT the files in your home directory!</strong> Therefore, do not expect any files or dependencies to be present. <strong>Parameterize the HDFS input path</strong> such that the full dataset can be supplied easily.</p>
+</li>
+</ul>
+<h2 id="scoring">Scoring</h2>
+<ul>
+<li>Correctness and resource/runtime efficiency<ul>
+<li>Output correctness (selected terms): 25p</li>
+<li>Code/program correctness: 20p</li>
+<li>Runtime efficiency: 20p</li>
+</ul>
+</li>
+<li>Code documentation: 10p</li>
+<li>Schematic overview (clarity, completeness,..): 10p</li>
+<li>Final report: 15p</li>
+</ul>
+<p><strong>Maximum total score: 100 points</strong></p>
+<h1 id="submission">Submission</h1>
+<h2 id="submission-files">Submission Files</h2>
+<p>Submit a single file named <code>&lt;groupID&gt;_DIC2023_Ex1.zip</code> that contains:</p>
+<ul>
+<li><code>output.txt</code>: results obtained</li>
+<li><code>report.pdf</code>: A written report </li>
+<li><code>src/</code>: subdirectory containing all <strong>documented</strong> source code of your MapReduce implementation and a <strong>script to run all jobs in the correct order with all necessary parameters</strong>.</li>
+</ul>
+<p>In case you use Java, also include the created <code>jar</code> files that you submit as jobs on the cluster. This can help to run your submission even if a rebuild fails.</p>
+<h2 id="submission-procedure">Submission procedure</h2>
+<p>Submit your solution via TUWEL before <strong>April 27, 2023 (23:59)</strong>.</p>
+</body></html>
