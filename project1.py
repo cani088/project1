@@ -48,22 +48,11 @@ def tokenizeReview(review):
 
     if review['category'] not in totalDocuments:
         totalDocuments[review['category']] = 0
-
     totalDocuments[review['category']] += 1
     # this regex can be improved to reject single character words
     tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
-    tokens = [token.lower() for token in tokens if token.lower() not in stopWordsHash and len(token) > 1]
+    tokens = list(set([token.lower() for token in tokens if token.lower() not in stopWordsHash and len(token) > 1]))
     for token in tokens:
-        # if token not in tokens_stats:
-        #     tokens_stats[token] = {
-        #         'categories': {},
-        #         'total_appeareances': 0
-        #     }
-        # if review['category'] in tokens_stats[token]['categories']:
-        #     tokens_stats[token]['categories'][review['category']] += 1
-        # else:
-        #     tokens_stats[token]['categories'][review['category']] = 1
-
         if review['category'] not in categories_tokens:
             categories_tokens[review['category']] = {}
 
@@ -84,6 +73,10 @@ def tokenizeReview(review):
     }
 
 def calculateChi():
+    N = 0
+    for cat in totalDocuments:
+        N += totalDocuments[cat]
+
     for category in categories_tokens:
         for token in categories_tokens[category]:
             B = 0
@@ -94,8 +87,10 @@ def calculateChi():
                 if token in categories_tokens[c]:
                     add = categories_tokens[c][token]['A']
                     B += add
+                    # Add the remainder to D
                     D += totalDocuments[c] - add
                 else:
+                    # Add all documents of C since they do not contain the token
                     D += totalDocuments[c]
 
             categories_tokens[category][token]['B'] = B
@@ -104,8 +99,8 @@ def calculateChi():
             T = categories_tokens[category][token]
             #R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
             categories_tokens[category][token]['R'] =\
-                (72000 * (((T['A'] * T['D']) - (T['B'] * T['C'])) ^ 2)) / (T['A'] + T['B']) * (T['A'] + T['C']) * (T['B'] + T['D']) * (T['C'] + T['D'])
-
+                (N * (((T['A'] * T['D']) - (T['B'] * T['C'])) ^ 2)) / (T['A'] + T['B']) * (T['A'] + T['C']) * (T['B'] + T['D']) * (T['C'] + T['D'])
+    print('finished')
 #Parallelization of the tokenization and filtering
 with open('reviews_devset.json', 'r') as reviews:
     # with futures.ThreadPoolExecutor(max_workers=1000) as executor:
