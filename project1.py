@@ -1,12 +1,12 @@
 import json
 import re
-from concurrent import futures
+import time
 
 # store stopwords in a hash map for faster search when filtering
 stopWordsHash = {}
 
 # categories_tokens is a hash map that stores a hash map of each unique token from the reviewText
-#e.g
+# e.g
 # {
 #     'category1': {
 #         'token1': 12,
@@ -67,12 +67,21 @@ def tokenizeReview(review):
 
         categories_tokens[review['category']][token]['A'] += 1
 
-    return {
-        "category": review['category'],
-        "tokens": tokens
-    }
 
 def calculateChi():
+    # In order to be able to calculate chi-square, we need to have the following values for each token (c is refered to the category, t is referred to the token(word))
+    # A- number of documents in c which contain t
+        # this is found in categories_tokens[{category}][{token}]
+    # B- number of documents not in c which contain t
+        # we need to calculate the total appeareances for each of the categories in tokens_stats[{token}] and subtract A from it
+    # C- number of documents in c without t
+        # this can be derived from getting the total number of documents for the category and subtracting A from it
+    # D- number of documents not in c without t
+        # total number of documents minus total documents in c minus B
+    # N- total number of retrieved documents (can be omitted for ranking)
+    # the formula for calculating chi-squared is
+    # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+
     N = 0
     for cat in totalDocuments:
         N += totalDocuments[cat]
@@ -97,11 +106,16 @@ def calculateChi():
             categories_tokens[category][token]['D'] = D
             categories_tokens[category][token]['C'] = totalDocuments[category] - categories_tokens[category][token]['A']
             T = categories_tokens[category][token]
-            #R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
-            categories_tokens[category][token]['R'] =\
-                (N * (((T['A'] * T['D']) - (T['B'] * T['C'])) ^ 2)) / (T['A'] + T['B']) * (T['A'] + T['C']) * (T['B'] + T['D']) * (T['C'] + T['D'])
+            # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+            categories_tokens[category][token]['R'] = \
+                (N * (((T['A'] * T['D']) - (T['B'] * T['C'])) ^ 2)) / (T['A'] + T['B']) * (T['A'] + T['C']) * (
+                            T['B'] + T['D']) * (T['C'] + T['D'])
     print('finished')
-#Parallelization of the tokenization and filtering
+
+
+# # Parallelization of the tokenization and filtering
+start = time.time()
+
 with open('reviews_devset.json', 'r') as reviews:
     # with futures.ThreadPoolExecutor(max_workers=1000) as executor:
     #     fs = {executor.submit(tokenizeReview, review): review for review in reviews}
@@ -109,15 +123,6 @@ with open('reviews_devset.json', 'r') as reviews:
         tokenizeReview(review)
     calculateChi()
 
-# In order to be able to calculate chi-square, we need to have the following values for each token (c is refered to the category, t is referred to the token(word))
-# A- number of documents in c which contain t
-    # this is found in categories_tokens[{category}][{token}]
-# B- number of documents not in c which contain t
-    # we need to calculate the total appeareances for each of the categories in tokens_stats[{token}] and subtract A from it
-# C- number of documents in c without t
-    # this can be derived from getting the total number of documents for the category and subtracting A from it
-# D- number of documents not in c without t
-    # total number of documents minus total documents in c minus B
-# N- total number of retrieved documents (can be omitted for ranking)
-# the formula for calculating chi-squared is
-# N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+
+end = time.time()
+print(end - start)
