@@ -9,29 +9,25 @@ stopWordsHash = {}
 # e.g
 # {
 #     'category1': {
-#         'token1': 12,
-#         'token2': 23
+#         'token1': {
+#           'A': 0,
+#           'B': 0,
+#           'C': 0,
+#           'D': 0,
+#         },
+#         'token2': {
+#           'A': 0,
+#           'B': 0,
+#           'C': 0,
+#           'D': 0,
+#         }
 #     },
 #     'category2': {
-#         'token1': 22,
-#         'token2': 3
+#           ...
 #     }
 # }
 
 categories_tokens = {}
-# tokens_stats is a hash map that stores for each token the amounts of times it has appeared in each category
-# e.g
-# {
-#     'token1': {
-#         'category1': 50,
-#         'category2': 30
-#     },
-#     'token2': {
-#         'category1': 22,
-#         'category2': 23
-#     }
-# }
-tokens_stats = {}
 
 # totalDocuments keeps track of the number of documents that is later needed for calculating chi-squared
 totalDocuments = {}
@@ -46,16 +42,17 @@ def tokenizeReview(review):
     review = json.loads(review)
     global totalDocuments
 
+    if review['category'] not in categories_tokens:
+        categories_tokens[review['category']] = {}
+
     if review['category'] not in totalDocuments:
         totalDocuments[review['category']] = 0
+
     totalDocuments[review['category']] += 1
     # this regex can be improved to reject single character words
     tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
     tokens = list(set([token.lower() for token in tokens if token.lower() not in stopWordsHash and len(token) > 1]))
     for token in tokens:
-        if review['category'] not in categories_tokens:
-            categories_tokens[review['category']] = {}
-
         if token not in categories_tokens[review['category']]:
             categories_tokens[review['category']][token] = {
                 'A': 0,
@@ -69,6 +66,8 @@ def tokenizeReview(review):
 
 
 def calculateChi():
+    # the formula for calculating chi-squared is
+    # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
     # In order to be able to calculate chi-square, we need to have the following values for each token (c is refered to the category, t is referred to the token(word))
     # A- number of documents in c which contain t
         # this is found in categories_tokens[{category}][{token}]
@@ -79,8 +78,7 @@ def calculateChi():
     # D- number of documents not in c without t
         # total number of documents minus total documents in c minus B
     # N- total number of retrieved documents (can be omitted for ranking)
-    # the formula for calculating chi-squared is
-    # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+
 
     N = 0
     for cat in totalDocuments:
