@@ -44,10 +44,10 @@ class MRWordFrequencyCount(MRJob):
             self.totalDocuments[review['category']] = 0
 
         self.totalDocuments[review['category']] += 1
-        self.categories_tokens['Patio_Lawn_and_Garde'] = review['category']
 
         # this regex can be improved to reject single character words
-        tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+        tokens = re.findall(
+            r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
         tokens = list(
             set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
         for token in tokens:
@@ -72,6 +72,7 @@ class MRWordFrequencyCount(MRJob):
             N += self.totalDocuments[cat]
 
         for category in self.categories_tokens:
+            self.categories_chi[category] = []
             for token in self.categories_tokens[category]:
                 A = self.categories_tokens[category][token]
                 B = 0
@@ -90,12 +91,15 @@ class MRWordFrequencyCount(MRJob):
 
                 C: int = self.totalDocuments[category] - A
                 # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
-                R: float = (N * (((A * D) - (B * C)) ^ 2)) / (A + B) * (A + C) * (B + D) * (C + D)
-                self.categories_chi[category].append({"token": token, "chi": R})
+                R: float = (N * (((A * D) - (B * C)) ^ 2)) / \
+                    (A + B) * (A + C) * (B + D) * (C + D)
+                self.categories_chi[category].append(
+                    {"token": token, "chi": R})
 
     def sortTokens(self):
         for category in self.categories_chi:
-            self.categories_chi[category].sort(key=lambda x: x.chi, reverse=True)
+            self.categories_chi[category].sort(
+                key=lambda x: x.chi, reverse=True)
             self.categories_chi[category] = self.categories_chi[0, 74]
 
     def mapper_count_words(self, _, line):
@@ -108,32 +112,33 @@ class MRWordFrequencyCount(MRJob):
         # num_occurrences is, so we can easily use Python's max() function.
         yield word, sum(counts)
 
-
-    def mapper_set_categories_tokens(self, _, line):
-        for count in line:
-            split = _.split('-')
-            if split[0] not in self.categories_tokens:
-                self.categories_tokens[str(split[0])][split[1]] = count
-
-            self.categories_tokens[str(split[0])][str(split[1])] = count
-
+    def mapper_set_categories_tokens(self, _, count):
+        split = _.split('-')
+        if split[0] not in self.categories_tokens:
+            self.categories_tokens.__setitem__(split[0],{})
+        # self.categories_tokens[split[0]][split[1]] = count
+        self.categories_tokens[split[0]].__setitem__(split[1], count)
+        yield json.dumps(self.categories_tokens), 1
 
     def reducer_calculate_chi(self, _, pairs):
         self.calculateChi()
-        self.sortTokens()
+        # self.sortTokens()
 
         for category in self.categories_chi:
-            str = ''
-            for token in self.categories_tokens[category]:
-                str += ' ' + token['token'] + ':' + str(token['chi'])
-            yield category, str
+            value = category
+            for token in self.categories_chi[category]:
+                value += ' ' + token['token'] + ':' + str(token['chi'])
+            yield value, 0
+
+
+
 
     def steps(self):
         return [
             MRStep(mapper=self.mapper_count_words,
                    reducer=self.reducer_count_words),
-            MRStep(mapper=self.mapper_set_categories_tokens,
-                   reducer=self.reducer_calculate_chi)
+            MRStep(mapper=self.mapper_set_categories_tokens
+                ,   reducer=self.reducer_calculate_chi)
         ]
 
 
