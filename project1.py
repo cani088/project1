@@ -44,8 +44,6 @@ def tokenizeReview(review):
 
     if review['category'] not in categories_tokens:
         categories_tokens[review['category']] = {}
-
-    if review['category'] not in totalDocuments:
         totalDocuments[review['category']] = 0
 
     totalDocuments[review['category']] += 1
@@ -99,15 +97,11 @@ def calculateChi():
                 else:
                     # Add all documents of C since they do not contain the token
                     D += totalDocuments[c]
+            A = categories_tokens[category][token]['A']
+            C = totalDocuments[category] - categories_tokens[category][token]['A']
 
-            categories_tokens[category][token]['B'] = B
-            categories_tokens[category][token]['D'] = D
-            categories_tokens[category][token]['C'] = totalDocuments[category] - categories_tokens[category][token]['A']
-            T = categories_tokens[category][token]
             # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
-            categories_tokens[category][token]['R'] = \
-                (N * (((T['A'] * T['D']) - (T['B'] * T['C'])) ^ 2)) / (T['A'] + T['B']) * (T['A'] + T['C']) * (
-                            T['B'] + T['D']) * (T['C'] + T['D'])
+            categories_tokens[category][token]['R'] = (N * (((A * D) - (B * C)) ** 2)) / (A + B) * (A + C) * (B + D) * (C + D)
     print('finished')
 
 
