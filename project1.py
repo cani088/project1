@@ -1,6 +1,6 @@
 import json
 import re
-import string
+import time
 
 from mrjob.job import MRJob
 from mrjob.step import MRStep
@@ -39,7 +39,7 @@ class MRWordFrequencyCount(MRJob):
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
         tokens = re.findall(
-            r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+            r'(?=\b\w{2,}\b)[\w()[\]{}.!?,;:+=\-_`~#@&*%€$§\/]+', review["reviewText"])
         # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
         self.categories_tokens[review['category']] = {}
         tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash]))
@@ -125,16 +125,14 @@ class MRWordFrequencyCount(MRJob):
                 value += ' ' + token['token'] + ':' + str(token['chi'])
             yield value, ' '
 
-
-
-
     def steps(self):
         return [
             MRStep(
                 mapper=self.mapper_count_words,
-                   reducer=self.reducer_count_words),
-            MRStep(mapper=self.mapper_set_categories_tokens
-                ,   reducer_final=self.reducer_calculate_chi)
+                reducer=self.reducer_count_words),
+            MRStep(
+                mapper=self.mapper_set_categories_tokens,   
+                reducer_final=self.reducer_calculate_chi)
         ]
 
 
