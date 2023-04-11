@@ -1,8 +1,6 @@
 import json
 import re
 import string
-import time
-from typing import Dict, Any
 
 from mrjob.job import MRJob
 from mrjob.step import MRStep
@@ -10,7 +8,7 @@ from mrjob.step import MRStep
 
 class MRWordFrequencyCount(MRJob):
     # store stopwords in a hash map for faster search when filtering
-    stopWordsHash: dict[string, int] = {}
+    stopWordsHash: dict[str, int] = {}
 
     # self.categories_tokens is a hash map that stores a hash map of each unique token from the reviewText
     # e.g
@@ -26,10 +24,11 @@ class MRWordFrequencyCount(MRJob):
     # }
     # categories_tokens: dict[string, dict[string, int]] = {}
     categories_tokens = {}
-    categories_chi: dict[string, list[dict[string, float]]] = {}
+    categories_chi: dict[str, list[dict[str, float]]] = {}
     testString = 'asdadadas'
     # totalDocuments keeps track of the number of documents that is later needed for calculating chi-squared
-    totalDocuments: dict[string, int] = {}
+    totalDocuments: dict[str, int] = {}
+    categories_counts = {}
 
     def __int__(self):
         # store stopwords in a hash for faster search
@@ -38,20 +37,16 @@ class MRWordFrequencyCount(MRJob):
                 self.stopWordsHash[word] = 1
 
     def tokenizeReview(self, review):
-        review = json.loads(review)
-
-        if review['category'] not in self.totalDocuments:
-            self.totalDocuments[review['category']] = 0
-
-        self.totalDocuments[review['category']] += 1
-
         # this regex can be improved to reject single character words
         tokens = re.findall(
             r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
-        tokens = list(
-            set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
+        # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+        self.categories_tokens[review['category']] = {}
+        tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash]))
+        # self.writeToNewDevset(review['category'], tokens)
         for token in tokens:
-            yield review['category'] + '-' + token, 1
+            yield review['category'], token
+            # yield (review['category'], token), 1
 
     def calculateChi(self):
         # In order to be able to calculate chi-square, we need to have the following values for each token (c is refered to the category, t is referred to the token(word))
@@ -68,77 +63,78 @@ class MRWordFrequencyCount(MRJob):
         # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
 
         N = 0
-        for cat in self.totalDocuments:
-            N += self.totalDocuments[cat]
+
+        for c in self.categories_tokens['category_count']:
+            N += self.categories_tokens['category_count'][c]
+            self.categories_counts[c] = self.categories_tokens['category_count'][c]
+
+        # remove category_count
+        self.categories_tokens.pop('category_count')
 
         for category in self.categories_tokens:
             self.categories_chi[category] = []
             for token in self.categories_tokens[category]:
                 A = self.categories_tokens[category][token]
                 B = 0
-                D = 0
+
                 for c in self.categories_tokens:
                     if c == category:
                         continue
                     if token in self.categories_tokens[c]:
-                        add = self.categories_tokens[c][token]
-                        B += add
-                        # Add the remainder to D
-                        D += self.totalDocuments[c] - add
-                    else:
-                        # Add all documents of C since they do not contain the token
-                        D += self.totalDocuments[c]
+                        B += self.categories_tokens[c][token]
 
-                C: int = self.totalDocuments[category] - A
+                C: int = self.categories_counts[category] - A
+                D: int = N - self.categories_counts[category] - B
+
                 # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
-                R: float = (N * (((A * D) - (B * C)) ^ 2)) / \
-                    (A + B) * (A + C) * (B + D) * (C + D)
-                self.categories_chi[category].append(
-                    {"token": token, "chi": R})
+                R: float = (N * (((A * D) - (B * C)) ** 2)) / ((A + B) * (A + C) * (B + D) * (C + D))
+                self.categories_chi[category].append({"token": token, "chi": R})
 
     def sortTokens(self):
         for category in self.categories_chi:
-            self.categories_chi[category].sort(
-                key=lambda x: x.chi, reverse=True)
-            self.categories_chi[category] = self.categories_chi[0, 74]
+            self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
+            if len(self.categories_chi[category]) > 76:
+                self.categories_chi[category] = self.categories_chi[category][0:75]
 
     def mapper_count_words(self, _, line):
         for review in line.splitlines():
+            review = json.loads(review)
             for out in self.tokenizeReview(review):
-                yield out
+                yield out, 1
+            yield ('category_count', review['category']), 1
 
     def reducer_count_words(self, word, counts):
         # send all (num_occurrences, word) pairs to the same reducer.
         # num_occurrences is, so we can easily use Python's max() function.
         yield word, sum(counts)
 
-    def mapper_set_categories_tokens(self, _, count):
-        split = _.split('-')
-        if split[0] not in self.categories_tokens:
-            self.categories_tokens.__setitem__(split[0],{})
-        # self.categories_tokens[split[0]][split[1]] = count
-        self.categories_tokens[split[0]].__setitem__(split[1], count)
-        yield json.dumps(self.categories_tokens), 1
+    def mapper_set_categories_tokens(self, line, count):
+        category = line[0]
+        word = line[1]
+        if category not in self.categories_tokens:
+            self.categories_tokens.__setitem__(category,{})
+        self.categories_tokens[category].__setitem__(word, count)
 
-    def reducer_calculate_chi(self, _, pairs):
+    def reducer_calculate_chi(self):
         self.calculateChi()
-        # self.sortTokens()
+        self.sortTokens()
 
         for category in self.categories_chi:
             value = category
             for token in self.categories_chi[category]:
                 value += ' ' + token['token'] + ':' + str(token['chi'])
-            yield value, 0
+            yield value, ' '
 
 
 
 
     def steps(self):
         return [
-            MRStep(mapper=self.mapper_count_words,
+            MRStep(
+                mapper=self.mapper_count_words,
                    reducer=self.reducer_count_words),
             MRStep(mapper=self.mapper_set_categories_tokens
-                ,   reducer=self.reducer_calculate_chi)
+                ,   reducer_final=self.reducer_calculate_chi)
         ]
 
 
