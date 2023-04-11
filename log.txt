@@ -1,1 +1,2 @@
-Category: category_count Token: Apps_for_Android A: 2638 B: 0 C: 0 D: 0
+sorting time: 0.08981789997778833
+calculate chi method time: 2.0925689000287093

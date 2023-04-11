@@ -1,6 +1,7 @@
 import json
 import re
 import string
+from timeit import default_timer as timer
 
 from mrjob.job import MRJob
 from mrjob.step import MRStep
@@ -640,7 +641,7 @@ class MRWordFrequencyCount(MRJob):
     #     }
     # }
     # categories_tokens: dict[string, dict[string, int]] = {}
-    categories_tokens = {}
+    categories_tokens = {'category_count': {}}
     categories_chi: dict[string, list[dict[string, float]]] = {}
 
     # totalDocuments keeps track of the number of documents that is later needed for calculating chi-squared
@@ -648,16 +649,17 @@ class MRWordFrequencyCount(MRJob):
     categories_counts = {}
 
     def tokenizeReview(self, review):
-
         # this regex can be improved to reject single character words
         tokens = re.findall(
             r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
         # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-
+        self.categories_tokens[review['category']] = {}
         tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopwords]))
+        # self.writeToNewDevset(review['category'], tokens)
         for token in tokens:
             yield review['category'], token
             # yield (review['category'], token), 1
+
     def mapper_init(self):
         with open('stopwords.txt', 'r') as file:
             for word in file.read().split("\n"):
@@ -684,7 +686,6 @@ class MRWordFrequencyCount(MRJob):
         self.categories_tokens.pop('category_count')
 
         for category in self.categories_tokens:
-            s = ''
             self.categories_chi[category] = []
             for token in self.categories_tokens[category]:
                 A = self.categories_tokens[category][token]
@@ -706,7 +707,6 @@ class MRWordFrequencyCount(MRJob):
     def sortTokens(self):
         for category in self.categories_chi:
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
-
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
 
@@ -726,8 +726,6 @@ class MRWordFrequencyCount(MRJob):
 
     def mapper_set_categories_tokens(self, split, count):
         # from the first step's output, we construct a dictinary that we are going to use for calculating chi values
-        if split[0] not in self.categories_tokens:
-            self.categories_tokens.__setitem__(split[0], {})
         self.categories_tokens[split[0]].__setitem__(split[1], count)
 
 
