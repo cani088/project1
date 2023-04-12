@@ -30,12 +30,6 @@ class MRWordFrequencyCount(MRJob):
     totalDocuments: dict[str, int] = {}
     categories_counts = {}
 
-    def __int__(self):
-        # store stopwords in a hash for faster search
-        with open('stopwords.txt', 'r') as file:
-            for word in file.read().split("\n"):
-                self.stopWordsHash[word] = 1
-
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
         tokens = re.findall(
@@ -134,7 +128,15 @@ class MRWordFrequencyCount(MRJob):
                 mapper=self.mapper_set_categories_tokens,   
                 reducer_final=self.reducer_calculate_chi)
         ]
-
+        
+    def populate_stopwords(self):
+        with open('stopwords.txt', 'r') as file:
+            for word in file.read().split("\n"):
+                self.stopWordsHash[word] = 1
 
 if __name__ == '__main__':
-    MRWordFrequencyCount.run()
+    job = MRWordFrequencyCount();
+    job.populate_stopwords();
+    job.run();
+
+
