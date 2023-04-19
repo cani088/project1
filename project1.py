@@ -97,6 +97,8 @@ class MRWordFrequencyCount(MRJob):
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
+            self.categories_chi[category].sort(key=lambda x: x['token'])
+
 
     def map_words_categories(self, _, line):
         for review in line.splitlines():
