@@ -733,6 +733,9 @@ class MRWordFrequencyCount(MRJob):
     def reducer_count_words(self, word, counts):
         yield word, sum(counts)
 
+    def combiner_count_words(self, word, counts):
+        yield word, sum(counts)
+
     def mapper_set_categories_tokens(self, split, count):
         # from the first step's output, we construct a dictinary that we are going to use for calculating chi values
         self.categories_tokens[split[0]].__setitem__(split[1], count)
@@ -759,6 +762,7 @@ class MRWordFrequencyCount(MRJob):
     def steps(self):
         return [
             MRStep(mapper=self.map_words_categories,
+                   combiner=self.combiner_count_words,
                    reducer=self.reducer_count_words),
             MRStep(mapper=self.mapper_set_categories_tokens,
                    reducer_final=self.reducer_calculate_chi)
