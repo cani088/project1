@@ -32,9 +32,9 @@ class MRWordFrequencyCount(MRJob):
 
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
-        tokens = re.findall(
-            r'(?=\b\w{2,}\b)[\w()[\]{}.!?,;:+=\-_`~#@&*%€$§\/]+', review["reviewText"])
-        # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+        # tokens = re.findall(
+        #     r'(?=\b\w{2,}\b)[\w()[\]{}.!?,;:+=\-_`~#@&*%€$§\/]+', review["reviewText"])
+        tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
         self.categories_tokens[review['category']] = {}
         tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash]))
         # self.writeToNewDevset(review['category'], tokens)
@@ -90,16 +90,24 @@ class MRWordFrequencyCount(MRJob):
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
 
+    # def mapper_count_words(self, _, line):
+    #     for review in line.splitlines():
+    #         review = json.loads(review)
+    #         for out in self.tokenizeReview(review):
+    #             yield out, 1
+    #         yield ('category_count', review['category']), 1
+
     def mapper_count_words(self, _, line):
         for review in line.splitlines():
             review = json.loads(review)
+            x = []
+            x.append(review['category'])
             for out in self.tokenizeReview(review):
-                yield out, 1
-            yield ('category_count', review['category']), 1
+                x.append(out[1])
+            yield x, [1, ] * len(x)
 
     def reducer_count_words(self, word, counts):
         # send all (num_occurrences, word) pairs to the same reducer.
-        # num_occurrences is, so we can easily use Python's max() function.
         yield word, sum(counts)
 
     def mapper_set_categories_tokens(self, line, count):
