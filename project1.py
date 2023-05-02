@@ -645,7 +645,7 @@ class MRWordFrequencyCount(MRJob):
     #     }
     # }
     # categories_tokens: dict[string, dict[string, int]] = {}
-    categories_tokens = {'category_count': {}}
+    categories_tokens = {'23': {}}
     categories_chi: dict[string, list[dict[string, float]]] = {}
     outputPath = os.path.abspath('output.txt').replace('\\', '/')
     logPath = os.path.abspath('log.txt').replace('\\', '/')
@@ -653,17 +653,46 @@ class MRWordFrequencyCount(MRJob):
     # totalDocuments keeps track of the number of documents that is later needed for calculating chi-squared
     totalDocuments: dict[string, int] = {}
     categories_counts = {}
+    categories_keys = {
+        "Patio_Lawn_and_Garde": "1",
+        "Apps_for_Android": "2",
+        "Book": "3",
+        "Toys_and_Game": "4",
+        "Office_Product": "5",
+        "Digital_Music": "6",
+        "Sports_and_Outdoor": "7",
+        "Automotive": "8",
+        "Beauty": "9",
+        "Musical_Instrument": "10",
+        "CDs_and_Vinyl": "11",
+        "Kindle_Store": "12",
+        "Clothing_Shoes_and_Jewelry": "13",
+        "Electronic": "14",
+        "Home_and_Kitche": "15",
+        "Cell_Phones_and_Accessorie": "16",
+        "Pet_Supplie": "17",
+        "Movies_and_TV": "18",
+        "Baby": "19",
+        "Tools_and_Home_Improvement": "20",
+        "Grocery_and_Gourmet_Food": "21",
+        "Health_and_Personal_Care": "22",
+        'category_count': "23"
+    }
+    categories_keys_counter = 0
 
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
         tokens = re.findall(
             r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
         # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-        self.categories_tokens[review['category']] = {}
         tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash]))
         # self.writeToNewDevset(review['category'], tokens)
+        category = review['category']
+        category_key = self.categories_keys[category]
+        self.categories_tokens[category_key] = {}
+
         for token in tokens:
-            yield review['category'], token
+            yield category_key, token
             # yield (review['category'], token), 1
 
     # def initFiles(self):
@@ -684,13 +713,13 @@ class MRWordFrequencyCount(MRJob):
         # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
 
         N = 0
-
-        for c in self.categories_tokens['category_count']:
-            N += self.categories_tokens['category_count'][c]
-            self.categories_counts[c] = self.categories_tokens['category_count'][c]
+        self.logData([self.categories_tokens['23']])
+        for c in self.categories_tokens['23']:
+            N += self.categories_tokens['23'][c]
+            self.categories_counts[c] = self.categories_tokens['23'][c]
 
         # remove category_count
-        self.categories_tokens.pop('category_count')
+        self.categories_tokens.pop('23')
 
         for category in self.categories_tokens:
             self.categories_chi[category] = []
@@ -728,7 +757,7 @@ class MRWordFrequencyCount(MRJob):
                 yield category_token_tuple, 1
 
             # yield category count for each of the articles to have total amount of articles for each category
-            yield ('category_count', review['category']), 1
+            yield ("23", self.categories_keys[review['category']]), 1
 
     def reducer_count_words(self, word, counts):
         yield word, sum(counts)
