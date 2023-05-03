@@ -58,8 +58,7 @@ class MRWordFrequencyCount(MRJob):
             # yield ('category_count', review['category']), 1
 
     def sum_words(self, word, counts):
-        totalCounts = sum(counts)
-        self.categories_tokens[word[0]].append({word[1]: totalCounts})
+        totalCounts = sum(counts6)
         yield word, totalCounts
 
 
