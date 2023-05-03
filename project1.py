@@ -88,10 +88,10 @@ class MyJob(MRJob):
 
     def reducer_count_words(self, word, counts):
         totalCount = sum(counts)
-        if self.categories_tokens[word[0]].get(word[1]) is None:
-            self.categories_tokens[word[0]][word[1]] = totalCount
-        else:
-            self.categories_tokens[word[0]][word[1]] += totalCount
+        # if self.categories_tokens[word[0]].get(word[1]) is None:
+        #     self.categories_tokens[word[0]][word[1]] = totalCount
+        # else:
+        #     self.categories_tokens[word[0]][word[1]] += totalCount
 
         yield word, totalCount
 
