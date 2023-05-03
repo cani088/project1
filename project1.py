@@ -58,16 +58,12 @@ class MRWordFrequencyCount(MRJob):
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        # self.categories_tokens[word[0]].__setitem__(word[1], totalCounts)
+        self.categories_tokens[word[0]][word[1]] = totalCounts
         yield word, totalCounts
 
 
     def steps(self):
         return [
-            # MRStep(mapper=self.map_get_categories,
-            #        reducer=self.reducer_count_words,
-            #     #    reducer_final=self.reducer_count_categories
-            #        ),
             MRStep(mapper=self.map_words_categories,
                    reducer=self.reducer_count_words)
         ]
