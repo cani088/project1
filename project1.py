@@ -54,7 +54,7 @@ class MRWordFrequencyCount(MRJob):
             for token in tokens:
                 yield (review['category'], token), 1
             
-            yield ('category_count', review['category']), 1
+            # yield ('category_count', review['category']), 1
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
