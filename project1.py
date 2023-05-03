@@ -687,9 +687,9 @@ class MRWordFrequencyCount(MRJob):
         category = review['category']
         category_key = self.categories_keys[category]
         self.categories_tokens[category_key] = {}
-
-        for token in tokens:
-            yield category_key, 'asdasda'
+        yield category_key, tokens[0]
+        # for token in tokens:
+            # yield category_key, token
             # yield (review['category'], token), 1
 
     # def initFiles(self):
