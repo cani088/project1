@@ -83,8 +83,8 @@ class MyJob(MRJob):
             yield ('category_count', review['category']), 1
 
 
-    # def combiner_count_words(self, word, counts):
-    #     yield word, sum(counts)
+    def combiner_count_words(self, word, counts):
+        yield word, sum(counts)
 
     def reducer_count_words(self, word, counts):
         totalCount = sum(counts)
