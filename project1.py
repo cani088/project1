@@ -6,9 +6,8 @@ import re
 from mrjob.job import MRJob
 from mrjob.step import MRStep
 import os
-import string
 
-class MRWordFrequencyCount(MRJob):
+class MyJob(MRJob):
     tokens = []
     logPath = os.path.abspath('log.txt').replace('\\', '/')
     stopWordsPath = os.path.abspath('stopwords.txt').replace('\\', '/')
@@ -64,8 +63,13 @@ class MRWordFrequencyCount(MRJob):
         "Sports_and_Outdoor":	{},
         "Tools_and_Home_Improvement":	{},
         "Toys_and_Game":	{},
-        "category_count": {}
+        'category_count': {}
     }
+
+    def initFiles(self):
+        with open(self.stopWordsPath, 'r') as file:
+            for word in file.read().split("\n"):
+                self.stopWordsHash[word] = 1
 
     def map_words_categories(self, _, line):
         for review in line.splitlines():
@@ -78,16 +82,24 @@ class MRWordFrequencyCount(MRJob):
             
             yield ('category_count', review['category']), 1
 
+
+    def combiner_count_words(self, word, counts):
+        yield word, sum(counts)
+
     def reducer_count_words(self, word, counts):
-        totalCounts = sum(counts)
-        self.tokens.append({'category': word[0], 'token': word[1], 'count': totalCounts})
-        yield word, totalCounts
+        totalCount = sum(counts)
+        if self.categories_tokens[word[0]].get(word[1]) is None:
+            self.categories_tokens[word[0]][word[1]] = totalCount
+        else:
+            self.categories_tokens[word[0]][word[1]] += totalCount
+
+        yield word, sum(counts)
 
 
-    # def logData(self, data):
-    #     with open(self.logPath, 'a') as file:
-    #         for item in data:
-    #             file.write(str(item) + "\n")
+    def logData(self, data):
+        with open(self.logPath, 'a') as file:
+            for item in data:
+                file.write(str(item) + "\n")
 
 
     def calculateChi(self):
@@ -100,9 +112,6 @@ class MRWordFrequencyCount(MRJob):
         # D- number of documents not in c without t - N minus total documents in c minus calculated B of each category
         # the formula for calculating chi-squared is
         # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
-        for token in self.tokens:
-            self.categories_tokens[token['category']][token['token']] = token['count']
-
         N = 0
 
         for c in self.categories_tokens['category_count']:
@@ -139,34 +148,33 @@ class MRWordFrequencyCount(MRJob):
                 self.categories_chi[category] = self.categories_chi[category][0:75]
 
 
-    def calculate(self):
+    def calculate(self, categories_tokens):
+        self.categories_tokens = categories_tokens
         self.calculateChi()
         self.sortTokens()
 
-        with open('output.txt', 'w') as file:
-            for category in self.categories_chi:
-                append = category
-                for token in self.categories_chi[category]:
-                    append += ' ' + token['token'] + ':' + str(token['chi'])
-                append += "\n"
-                file.write(append)
+        for category in self.categories_chi:
+            append = category
+            for token in self.categories_chi[category]:
+                append += ' ' + token['token'] + ':' + str(token['chi'])
+            print(append)
 
 
     def steps(self):
         return [
-            MRStep(mapper=self.map_words_categories,
-                   reducer=self.reducer_count_words
-                   )
+            MRStep(
+                mapper_init=self.initFiles,
+                mapper=self.map_words_categories,
+                combiner=self.combiner_count_words,
+                reducer=self.reducer_count_words
+            )
         ]
 
 
-    # def initFiles(self):
-    #     with open(self.stopWordsPath, 'r') as file:
-    #         for word in file.read().split("\n"):
-    #             self.stopWordsHash[word] = 1
 
 if __name__ == '__main__':
-    job = MRWordFrequencyCount()
-    # job.initFiles()
-    job.run()
-    job.calculate()
+    job = MyJob()
+    with job.make_runner() as runner:
+        runner.run()
+        global_output = job.categories_tokens
+        job.calculate(global_output)
