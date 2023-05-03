@@ -59,7 +59,7 @@ class MRWordFrequencyCount(MRJob):
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        self.categories_tokens[word[0]].append({word[1]: totalCounts})
+        # self.categories_tokens[word[0]].append({word[1]: totalCounts})
         yield word, totalCounts
 
 
