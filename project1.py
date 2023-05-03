@@ -2,10 +2,13 @@
 
 import json
 import re
+import string
 from timeit import default_timer as timer
 
 from mrjob.job import MRJob
 from mrjob.step import MRStep
+import sys
+import os
 
 
 class MRWordFrequencyCount(MRJob):
@@ -643,8 +646,9 @@ class MRWordFrequencyCount(MRJob):
     # }
     # categories_tokens: dict[string, dict[string, int]] = {}
     categories_tokens = {'23': {}}
-    categories_chi = {}
-
+    categories_chi: dict[string, list[dict[string, float]]] = {}
+    outputPath = os.path.abspath('output.txt').replace('\\', '/')
+    logPath = os.path.abspath('log.txt').replace('\\', '/')
     categories_counts = {}
     categories_keys = {
         "Patio_Lawn_and_Garde": "1",
@@ -671,7 +675,6 @@ class MRWordFrequencyCount(MRJob):
         "Health_and_Personal_Care": "22",
         'category_count': "23"
     }
-
     categories_keys_counter = 0
 
     def tokenizeReview(self, review):
@@ -686,7 +689,7 @@ class MRWordFrequencyCount(MRJob):
         self.categories_tokens[category_key] = {}
 
         for token in tokens:
-            yield category_key, token
+            yield category_key, 'asdasda'
             # yield (review['category'], token), 1
 
     # def initFiles(self):
@@ -707,6 +710,7 @@ class MRWordFrequencyCount(MRJob):
         # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
 
         N = 0
+        self.logData([self.categories_tokens['23']])
         for c in self.categories_tokens['23']:
             N += self.categories_tokens['23'][c]
             self.categories_counts[c] = self.categories_tokens['23'][c]
@@ -738,7 +742,7 @@ class MRWordFrequencyCount(MRJob):
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
-        dict(sorted(self.categories_chi.items()))
+            self.categories_chi[category].sort(key=lambda x: x['token'])
 
 
     def map_words_categories(self, _, line):
@@ -775,6 +779,11 @@ class MRWordFrequencyCount(MRJob):
             # append += "\n"
             # file.write(append)
             yield category, append
+
+    def logData(self, data):
+        with open(self.logPath, 'a') as file:
+            for item in data:
+                file.write(str(item) + "\n")
 
     def steps(self):
         return [
