@@ -71,7 +71,8 @@ class MRWordFrequencyCount(MRJob):
         return [
             MRStep(mapper=self.map_words_categories,
                    reducer=self.reducer_count_words,
-                   reducer_final=self.reducer_final)
+                #    reducer_final=self.reducer_final
+                   )
         ]
 
 if __name__ == '__main__':
