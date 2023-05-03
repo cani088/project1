@@ -1,7 +1,8 @@
 #! /usr/bin/python
 
 import json
-
+from timeit import default_timer as timer
+import re
 from mrjob.job import MRJob
 from mrjob.step import MRStep
 
@@ -11,7 +12,12 @@ class MRWordFrequencyCount(MRJob):
     def map_words_categories(self, _, line):
         for review in line.splitlines():
             review = json.loads(review)
-            yield review['category'], 1
+            tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+            # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+            tokens = list(set([token.lower() for token in tokens]))
+            # self.writeToNewDevset(review['category'], tokens)
+            for token in tokens:
+                yield (review['category'], token), 1
           
     def reducer_count_words(self, word, counts):
         yield word, sum(counts)
