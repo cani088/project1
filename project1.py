@@ -679,16 +679,19 @@ class MRWordFrequencyCount(MRJob):
 
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
-        tokens = re.findall(
-            r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
-        # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-        tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
-        # self.writeToNewDevset(review['category'], tokens)
         category = review['category']
-        self.categories_tokens[category] = {}
+        yield category, 'asdasdasd'
+
+        # tokens = re.findall(
+        #     r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+        # # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+        # tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
+        # # self.writeToNewDevset(review['category'], tokens)
+        # category = review['category']
+        # self.categories_tokens[category] = {}
         
-        for token in tokens:
-            yield category, token
+        # for token in tokens:
+        #     yield category, token
             # yield (review['category'], token), 1
 
     # def initFiles(self):
@@ -789,8 +792,8 @@ class MRWordFrequencyCount(MRJob):
             MRStep(mapper=self.map_words_categories,
                    combiner=self.combiner_count_words,
                    reducer=self.reducer_count_words),
-            MRStep(mapper=self.mapper_set_categories_tokens,
-                   reducer_final=self.reducer_calculate_chi)
+            # MRStep(mapper=self.mapper_set_categories_tokens,
+            #        reducer_final=self.reducer_calculate_chi)
         ]
 
 if __name__ == '__main__':
