@@ -86,6 +86,7 @@ class MRWordFrequencyCount(MRJob):
             
             yield ('category_count', review['category']), 1
 
+
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
         self.tokens.append({'category': word[0], 'token': word[1], 'count': totalCounts})
@@ -96,6 +97,7 @@ class MRWordFrequencyCount(MRJob):
         with open(self.logPath, 'a') as file:
             for item in data:
                 file.write(str(item) + "\n")
+
 
     def calculateChi(self):
         # c is refered to the category, t is referred to the token(word)
@@ -138,11 +140,13 @@ class MRWordFrequencyCount(MRJob):
                 R: float = (N * (((A * D) - (B * C)) ** 2)) / ((A + B) * (A + C) * (B + D) * (C + D))
                 self.categories_chi[category].append({"token": token, "chi": R})
 
+
     def sortTokens(self):
         for category in self.categories_chi:
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
+
 
     def calculate(self):
         self.calculateChi()
@@ -155,6 +159,7 @@ class MRWordFrequencyCount(MRJob):
                     append += ' ' + token['token'] + ':' + str(token['chi'])
                 append += "\n"
                 file.write(append)
+
 
     def steps(self):
         return [
@@ -169,9 +174,10 @@ class MRWordFrequencyCount(MRJob):
             for word in file.read().split("\n"):
                 self.stopWordsHash[word] = 1
 
+
 if __name__ == '__main__':
     job = MRWordFrequencyCount()
     job.initFiles()
     job.logData([job.stopWordsHash])
     job.run()
-    job.calculate()
+    # job.calculate()
