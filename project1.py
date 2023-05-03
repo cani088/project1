@@ -5,9 +5,14 @@ from timeit import default_timer as timer
 import re
 from mrjob.job import MRJob
 from mrjob.step import MRStep
-
+import os
+import string
 
 class MRWordFrequencyCount(MRJob):
+    tokens = []
+    logPath = os.path.abspath('log.txt').replace('\\', '/')
+    stopWordsPath = os.path.abspath('stopwords.txt').replace('\\', '/')
+    stopWordsHash = {}
     categories_counts = {
         "Apps_for_Android":	2638,
         "Automotive":	1374,
@@ -56,9 +61,11 @@ class MRWordFrequencyCount(MRJob):
         "Sports_and_Outdoor":	{},
         "Tools_and_Home_Improvement":	{},
         "Toys_and_Game":	{},
-        "categories_count": {}
+        "category_count": {}
     }
 
+    categories_chi: dict[string, list[dict[string, float]]] = {}
+    outputPath = os.path.abspath('output.txt').replace('\\', '/')
 
     def map_get_categories(self, _, line):
         for review in line.splitlines():
@@ -73,22 +80,22 @@ class MRWordFrequencyCount(MRJob):
             review = json.loads(review)
             tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
             # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-            tokens = list(set([token.lower() for token in tokens if len(token) > 2]))
+            tokens = list(set([token.lower() for token in tokens if token not in self.stopWordsHash and len(token) > 2]))
             for token in tokens:
                 yield (review['category'], token), 1
             
-            # yield ('category_count', review['category']), 1
+            yield ('category_count', review['category']), 1
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        self.categories_tokens[word[0]].__setitem__(word[1], totalCounts)
-        # self.categories_tokens[word[0]][word[1]] = totalCounts
-
+        self.tokens.append({'category': word[0], 'token': word[1], 'count': totalCounts})
         yield word, totalCounts
 
 
-    def reducer_final(self):
-        self.calculateChi()
+    def logData(self, data):
+        with open(self.logPath, 'a') as file:
+            for item in data:
+                file.write(str(item) + "\n")
 
     def calculateChi(self):
         # c is refered to the category, t is referred to the token(word)
@@ -100,6 +107,8 @@ class MRWordFrequencyCount(MRJob):
         # D- number of documents not in c without t - N minus total documents in c minus calculated B of each category
         # the formula for calculating chi-squared is
         # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+        for token in self.tokens:
+            self.categories_tokens[token['category']][token['token']] = token['count']
 
         N = 0
 
@@ -129,15 +138,40 @@ class MRWordFrequencyCount(MRJob):
                 R: float = (N * (((A * D) - (B * C)) ** 2)) / ((A + B) * (A + C) * (B + D) * (C + D))
                 self.categories_chi[category].append({"token": token, "chi": R})
 
+    def sortTokens(self):
+        for category in self.categories_chi:
+            self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
+            if len(self.categories_chi[category]) > 76:
+                self.categories_chi[category] = self.categories_chi[category][0:75]
+
+    def calculate(self):
+        self.calculateChi()
+        self.sortTokens()
+
+        with open(self.outputPath, 'w') as file:
+            for category in self.categories_chi:
+                append = category
+                for token in self.categories_chi[category]:
+                    append += ' ' + token['token'] + ':' + str(token['chi'])
+                append += "\n"
+                file.write(append)
 
     def steps(self):
         return [
             MRStep(mapper=self.map_words_categories,
-                   reducer=self.reducer_count_words,
-                   reducer_final=self.reducer_final
+                   reducer=self.reducer_count_words
                    )
         ]
 
+
+    def initFiles(self):
+        with open(self.stopWordsPath, 'r') as file:
+            for word in file.read().split("\n"):
+                self.stopWordsHash[word] = 1
+
 if __name__ == '__main__':
     job = MRWordFrequencyCount()
+    job.initFiles()
+    job.logData([job.stopWordsHash])
     job.run()
+    job.calculate()
