@@ -12,6 +12,9 @@ class MRWordFrequencyCount(MRJob):
     tokens = []
     logPath = os.path.abspath('log.txt').replace('\\', '/')
     stopWordsPath = os.path.abspath('stopwords.txt').replace('\\', '/')
+    outputPath = os.path.abspath('output.txt').replace('\\', '/')
+    categories_chi = {}
+
     stopWordsHash = {}
     categories_counts = {
         "Apps_for_Android":	2638,
@@ -64,8 +67,6 @@ class MRWordFrequencyCount(MRJob):
         "category_count": {}
     }
 
-    categories_chi: dict[string, list[dict[string, float]]] = {}
-    outputPath = os.path.abspath('output.txt').replace('\\', '/')
 
     def map_get_categories(self, _, line):
         for review in line.splitlines():
@@ -85,7 +86,6 @@ class MRWordFrequencyCount(MRJob):
                 yield (review['category'], token), 1
             
             yield ('category_count', review['category']), 1
-
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
@@ -173,7 +173,6 @@ class MRWordFrequencyCount(MRJob):
         with open(self.stopWordsPath, 'r') as file:
             for word in file.read().split("\n"):
                 self.stopWordsHash[word] = 1
-
 
 if __name__ == '__main__':
     job = MRWordFrequencyCount()
