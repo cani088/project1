@@ -9,7 +9,7 @@ from mrjob.step import MRStep
 
 class MRWordFrequencyCount(MRJob):
     tokens = []
-    categories_tokens = {'categories_tokens': {}}
+    categories_tokens = {'categories_tokens': []}
     categories_counts = {
         "Apps_for_Android":	2638,
         "Automotive":	1374,
@@ -50,7 +50,7 @@ class MRWordFrequencyCount(MRJob):
             tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
             # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
             tokens = list(set([token.lower() for token in tokens if len(token) > 2]))
-            self.categories_tokens[review['category']] = {}
+            self.categories_tokens[review['category']] = []
             # self.writeToNewDevset(review['category'], tokens)
             for token in tokens:
                 yield (review['category'], token), 1
@@ -59,7 +59,7 @@ class MRWordFrequencyCount(MRJob):
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        self.tokens.append({'category': word[0], 'word': word[1], 'count': totalCounts})
+        self.categories_tokens[word[0]].append({word[1]: counts})
         yield word, totalCounts
 
 
