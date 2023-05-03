@@ -8,8 +8,8 @@ from mrjob.step import MRStep
 
 
 class MRWordFrequencyCount(MRJob):
-    categories_tokens = []
-
+    tokens = []
+    categories_tokens = {'categories_tokens': {}}
     categories_counts = {
         "Apps_for_Android":	2638,
         "Automotive":	1374,
@@ -35,6 +35,7 @@ class MRWordFrequencyCount(MRJob):
         "Toys_and_Game":	2253,
     }
 
+
     def map_get_categories(self, _, line):
         for review in line.splitlines():
             review = json.loads(review)
@@ -49,6 +50,7 @@ class MRWordFrequencyCount(MRJob):
             tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
             # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
             tokens = list(set([token.lower() for token in tokens if len(token) > 2]))
+            self.categories_tokens[review['category']] = {}
             # self.writeToNewDevset(review['category'], tokens)
             for token in tokens:
                 yield (review['category'], token), 1
@@ -57,14 +59,19 @@ class MRWordFrequencyCount(MRJob):
 
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        self.categories_tokens.append({'category': word[0], 'word': word[1], 'count': totalCounts})
+        self.tokens.append({'category': word[0], 'word': word[1], 'count': totalCounts})
         yield word, totalCounts
 
 
+    def reducer_final(self):
+        for token in self.tokens:
+            self.categories_tokens[token['category']][token['word']] = token['count']
+        
     def steps(self):
         return [
             MRStep(mapper=self.map_words_categories,
-                   reducer=self.reducer_count_words)
+                   reducer=self.reducer_count_words,
+                   reducer_final=self.reducer_final)
         ]
 
 if __name__ == '__main__':
