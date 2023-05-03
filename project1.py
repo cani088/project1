@@ -93,7 +93,7 @@ class MyJob(MRJob):
         else:
             self.categories_tokens[word[0]][word[1]] += totalCount
 
-        yield word, sum(counts)
+        yield word, totalCount
 
 
     def logData(self, data):
@@ -174,7 +174,8 @@ class MyJob(MRJob):
 
 if __name__ == '__main__':
     job = MyJob()
-    with job.make_runner() as runner:
-        runner.run()
-        global_output = job.categories_tokens
-        job.calculate(global_output)
+    job.run()
+    # with job.make_runner() as runner:
+    #     runner.run()
+    #     global_output = job.categories_tokens
+    #     job.calculate(global_output)
