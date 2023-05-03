@@ -50,7 +50,7 @@ class MRWordFrequencyCount(MRJob):
             tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
             # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
             tokens = list(set([token.lower() for token in tokens if len(token) > 2]))
-            # self.writeToNewDevset(review['category'], tokens)
+            self.categories_tokens[review['category']] = {}
             for token in tokens:
                 yield (review['category'], token), 1
             
@@ -63,14 +63,55 @@ class MRWordFrequencyCount(MRJob):
 
 
     def reducer_final(self):
+        self.calculateChi()
+
+    def calculateChi(self):
+        # c is refered to the category, t is referred to the token(word)
+        # In order to be able to calculate chi-square, we need to have the following values for each token:
+        # N- total number of retrieved documents
+        # A- number of documents in c which contain t - this value is found in self.categories_tokens[{c}][{t}]
+        # B- number of documents not in c which contain t - we need go onto each category and check if they have the token, if yes, we accumulate its value into token's B
+        # C- number of documents in c without t - this can be derived from getting the total number of documents for the category and subtracting A from it
+        # D- number of documents not in c without t - N minus total documents in c minus calculated B of each category
+        # the formula for calculating chi-squared is
+        # N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
         for token in self.tokens:
-            self.categories_tokens[token['category']][token['word']] = token['count']
-        
+            self.categories_tokens[token['category']][token['token']] = token['count']
+
+        # N = 0
+
+        # for c in self.categories_tokens['category_count']:
+        #     N += self.categories_tokens['category_count'][c]
+        #     self.categories_counts[c] = self.categories_tokens['category_count'][c]
+
+        # # remove category_count
+        # self.categories_tokens.pop('category_count')
+
+        # for category in self.categories_tokens:
+        #     self.categories_chi[category] = []
+        #     for token in self.categories_tokens[category]:
+        #         A = self.categories_tokens[category][token]
+        #         B = 0
+
+        #         for c in self.categories_tokens:
+        #             if c == category:
+        #                 continue
+        #             if token in self.categories_tokens[c]:
+        #                 B += self.categories_tokens[c][token]
+
+        #         C: int = self.categories_counts[category] - A
+        #         D: int = N - self.categories_counts[category] - B
+
+        #         # R = N(AD - BC)^2 / (A+B)(A+C)(B+D)(C+D)
+        #         R: float = (N * (((A * D) - (B * C)) ** 2)) / ((A + B) * (A + C) * (B + D) * (C + D))
+        #         self.categories_chi[category].append({"token": token, "chi": R})
+
+
     def steps(self):
         return [
             MRStep(mapper=self.map_words_categories,
                    reducer=self.reducer_count_words,
-                #    reducer_final=self.reducer_final
+                   reducer_final=self.reducer_final
                    )
         ]
 
