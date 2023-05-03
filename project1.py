@@ -57,9 +57,14 @@ class MRWordFrequencyCount(MRJob):
             
             # yield ('category_count', review['category']), 1
 
+    def sum_words(self, word, counts):
+        totalCounts = sum(counts)
+        self.categories_tokens[word[0]].append({word[1]: totalCounts})
+        yield word, totalCounts
+
+
     def reducer_count_words(self, word, counts):
         totalCounts = sum(counts)
-        # self.categories_tokens[word[0]].append({word[1]: totalCounts})
         yield word, totalCounts
 
 
@@ -70,6 +75,7 @@ class MRWordFrequencyCount(MRJob):
     def steps(self):
         return [
             MRStep(mapper=self.map_words_categories,
+                   combiner=self.sum_words,
                    reducer=self.reducer_count_words,
                 #    reducer_final=self.reducer_final
                    )
