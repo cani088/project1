@@ -83,8 +83,8 @@ class MyJob(MRJob):
             yield ('category_count', review['category']), 1
 
 
-    def combiner_count_words(self, word, counts):
-        yield word, sum(counts)
+    # def combiner_count_words(self, word, counts):
+    #     yield word, sum(counts)
 
     def reducer_count_words(self, word, counts):
         totalCount = sum(counts)
@@ -165,7 +165,7 @@ class MyJob(MRJob):
             MRStep(
                 mapper_init=self.initFiles,
                 mapper=self.map_words_categories,
-                combiner=self.combiner_count_words,
+                # combiner=self.combiner_count_words,
                 reducer=self.reducer_count_words
             )
         ]
