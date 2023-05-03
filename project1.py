@@ -143,14 +143,13 @@ class MRWordFrequencyCount(MRJob):
         self.calculateChi()
         self.sortTokens()
 
-        # with open('output.txt', 'w') as file:
-        for category in self.categories_chi:
-            append = category
-            for token in self.categories_chi[category]:
-                append += ' ' + token['token'] + ':' + str(token['chi'])
-            # append += "\n"
-            yield category, token
-                # file.write(append)
+        with open('output.txt', 'w') as file:
+            for category in self.categories_chi:
+                append = category
+                for token in self.categories_chi[category]:
+                    append += ' ' + token['token'] + ':' + str(token['chi'])
+                append += "\n"
+                file.write(append)
 
 
     def steps(self):
