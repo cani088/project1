@@ -679,19 +679,16 @@ class MRWordFrequencyCount(MRJob):
 
     def tokenizeReview(self, review):
         # this regex can be improved to reject single character words
+        tokens = re.findall(
+            r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+        # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+        tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
+        # self.writeToNewDevset(review['category'], tokens)
         category = review['category']
-        yield category, 'asdasdasd'
-
-        # tokens = re.findall(
-        #     r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
-        # # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-        # tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
-        # # self.writeToNewDevset(review['category'], tokens)
-        # category = review['category']
-        # self.categories_tokens[category] = {}
+        self.categories_tokens[category] = {}
         
-        # for token in tokens:
-        #     yield category, token
+        for token in tokens:
+            yield category, token
             # yield (review['category'], token), 1
 
     # def initFiles(self):
@@ -750,13 +747,18 @@ class MRWordFrequencyCount(MRJob):
     def map_words_categories(self, _, line):
         for review in line.splitlines():
             review = json.loads(review)
-
-            for category_token_tuple in self.tokenizeReview(review):
-                # category_token_tuple in this case is a tuple, consisting of (category_name, token)
-                yield category_token_tuple, 1
+            tokens = re.findall(
+                r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
+            # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
+            tokens = list(set([token.lower() for token in tokens if token.lower() not in self.stopWordsHash and len(token) > 1]))
+            # self.writeToNewDevset(review['category'], tokens)
+            category = review['category']
+        
+            for token in tokens:
+                yield (category, token), 1
 
             # yield category count for each of the articles to have total amount of articles for each category
-            yield ("category_count", review['category']), 1
+            yield ("category_count", category), 1
 
     def reducer_count_words(self, word, counts):
         yield word, sum(counts)
