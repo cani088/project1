@@ -160,14 +160,13 @@ class MRWordFrequencyCount(MRJob):
         ]
 
 
-    # def initFiles(self):
-    #     with open(self.stopWordsPath, 'r') as file:
-    #         for word in file.read().split("\n"):
-    #             self.stopWordsHash[word] = 1
+    def initFiles(self):
+        with open(self.stopWordsPath, 'r') as file:
+            for word in file.read().split("\n"):
+                self.stopWordsHash[word] = 1
 
 if __name__ == '__main__':
     job = MRWordFrequencyCount()
-    # job.initFiles()
-    # job.logData([job.stopWordsHash])
+    job.initFiles()
     job.run()
     # job.calculate()
