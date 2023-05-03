@@ -178,4 +178,4 @@ if __name__ == '__main__':
     with job.make_runner() as runner:
         runner.run()
         global_output = job.categories_tokens
-        job.calculate(global_output)
+        # job.calculate(global_output)
