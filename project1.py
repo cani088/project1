@@ -53,13 +53,14 @@ class MRWordFrequencyCount(MRJob):
             # self.writeToNewDevset(review['category'], tokens)
             for token in tokens:
                 yield (review['category'], token), 1
-          
-    def reducer_count_words(self, word, counts):
-        yield word, sum(counts)
+            
+            yield ('category_count', review['category']), 1
 
-    def mapper_set_categories_tokens(self, split, count):
-        # from the first step's output, we construct a dictinary that we are going to use for calculating chi values
-        self.categories_tokens[split[0]].__setitem__(split[1], count)
+    def reducer_count_words(self, word, counts):
+        totalCounts = sum(counts)
+        self.categories_tokens[word[0]].__setitem__(word[1], totalCounts)
+        yield word, totalCounts
+
 
     def steps(self):
         return [
@@ -68,8 +69,7 @@ class MRWordFrequencyCount(MRJob):
             #     #    reducer_final=self.reducer_count_categories
             #        ),
             MRStep(mapper=self.map_words_categories,
-                   reducer=self.reducer_count_words),
-            MRStep(mapper=self.mapper_set_categories_tokens)
+                   reducer=self.reducer_count_words)
         ]
 
 if __name__ == '__main__':
