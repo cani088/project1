@@ -174,8 +174,8 @@ class MyJob(MRJob):
 
 if __name__ == '__main__':
     job = MyJob()
-    # job.run()
-    with job.make_runner() as runner:
-        runner.run()
-        global_output = job.categories_tokens
-        # job.calculate(global_output)
+    job.run()
+    # with job.make_runner() as runner:
+    #     runner.run()
+    #     global_output = job.categories_tokens
+    #     # job.calculate(global_output)
