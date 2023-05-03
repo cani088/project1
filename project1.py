@@ -8,7 +8,7 @@ from mrjob.step import MRStep
 
 
 class MRWordFrequencyCount(MRJob):
-    categories_tokens = {}
+    categories_tokens = {'category_count': {}}
 
     def map_words_categories(self, _, line):
         for review in line.splitlines():
@@ -20,6 +20,7 @@ class MRWordFrequencyCount(MRJob):
             # self.writeToNewDevset(review['category'], tokens)
             for token in tokens:
                 yield (review['category'], token), 1
+            yield ('category_count', review['category']), 1
           
     def reducer_count_words(self, word, counts):
         yield word, sum(counts)
