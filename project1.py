@@ -59,6 +59,7 @@ class MyJob(MRJob):
         "Musical_Instrument":	{},
         "Office_Product":	{},
         "Patio_Lawn_and_Garde":	{},
+        "Patio_Lawn_and_Garde2":	{},
         "Pet_Supplie":	{},
         "Sports_and_Outdoor":	{},
         "Tools_and_Home_Improvement":	{},
@@ -76,22 +77,17 @@ class MyJob(MRJob):
             review = json.loads(review)
             tokens = re.findall(r'\b[^\d\W]+\b|[()[]{}.!?,;:+=-_`~#@&*%€$§\/]^', review["reviewText"])
             # tokens = re.findall(r'\b\w+\b|[(){}\[\].!?,;:+=\-_"\'`~#@&*%€$§\\/]+', review['reviewText'])
-            tokens = list(set([token.lower() for token in tokens if token not in self.stopWordsHash and len(token) > 2]))
+            tokens = set(token.lower() for token in tokens if token not in self.stopWordsHash and len(token) > 2)
             for token in tokens:
                 yield (review['category'], token), 1
             
             yield ('category_count', review['category']), 1
-
 
     def combiner_count_words(self, word, counts):
         yield word, sum(counts)
 
     def reducer_count_words(self, word, counts):
         totalCount = sum(counts)
-        if self.categories_tokens[word[0]].get(word[1]) is None:
-            self.categories_tokens[word[0]][word[1]] = totalCount
-        else:
-            self.categories_tokens[word[0]][word[1]] += totalCount
 
         yield word, totalCount
 
@@ -148,17 +144,27 @@ class MyJob(MRJob):
                 self.categories_chi[category] = self.categories_chi[category][0:75]
 
 
-    def calculate(self, categories_tokens):
-        self.categories_tokens = categories_tokens
+    def calculate(self):
         self.calculateChi()
         self.sortTokens()
 
         for category in self.categories_chi:
-            append = category
+            append = ''
             for token in self.categories_chi[category]:
                 append += ' ' + token['token'] + ':' + str(token['chi'])
-            print(append)
+            yield category, append
 
+
+    def second_mapper(self, word, count):
+        yield None, (word[0], word[1], count)
+
+
+    def second_reducer(self, word, word_counts):
+        for cat, tok, count in word_counts:
+            self.categories_tokens[cat][tok] = count
+
+        for category, token in self.calculate():
+            yield category, token
 
     def steps(self):
         return [
@@ -166,18 +172,21 @@ class MyJob(MRJob):
                 mapper_init=self.initFiles,
                 mapper=self.map_words_categories,
                 combiner=self.combiner_count_words,
-                reducer=self.reducer_count_words
+                reducer=self.reducer_count_words,
+            ),
+            MRStep(
+                mapper=self.second_mapper,
+                reducer=self.second_reducer
             )
         ]
 
 
-
 if __name__ == '__main__':
     job = MyJob()
-    # job.run()
+    job.run()
     # job.calculate(job.categories_tokens)
 
-    with job.make_runner() as runner:
-        runner.run()
-        global_output = job.categories_tokens
-        job.calculate(global_output)
+    # with job.make_runner() as runner:
+    #     runner.run()
+    #     global_output = job.categories_tokens
+    #     job.calculate(global_output)
