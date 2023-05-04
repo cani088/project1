@@ -6,13 +6,13 @@ import re
 from mrjob.job import MRJob
 from mrjob.step import MRStep
 import os
+import string
 
 class MyJob(MRJob):
-    tokens = []
     logPath = os.path.abspath('log.txt').replace('\\', '/')
     stopWordsPath = os.path.abspath('stopwords.txt').replace('\\', '/')
     outputPath = os.path.abspath('output.txt').replace('\\', '/')
-    categories_chi = {}
+    categories_chi: list[dict[string, string]] = {}
     stopWordsHash = {
         "a": 0,
         "b": 0,
@@ -631,16 +631,24 @@ class MyJob(MRJob):
         "zero": 0,
     }
     
-    categories_counts = {}
+    # Store total count for each category
+    categories_counts: dict[string, int] = {}
 
-    categories_tokens = {
+    # a hash map that stores a hash map of each unique token from the reviewText
+    # e.g
+    # {
+    #     'category1': {
+    #         'token1': 12,
+    #         'token2': 23
+    #     },
+    #     'category2': {
+    #         'token1': 22,
+    #         'token2': 3
+    #     }
+    # }
+    categories_tokens: dict[string, dict: [string, int]] = {
         'category_count': {}
     }
-
-    def initFiles(self):
-        with open('stopwords.txt', 'r') as file:
-            for word in file.read().split("\n"):
-                self.stopWordsHash[word] = 1
 
 
     def map_words_categories(self, _, line):
@@ -742,7 +750,6 @@ class MyJob(MRJob):
     def steps(self):
         return [
             MRStep(
-                mapper_init=self.initFiles,
                 mapper=self.map_words_categories,
                 combiner=self.combiner_count_words,
                 reducer=self.reducer_count_words,
@@ -757,9 +764,3 @@ class MyJob(MRJob):
 if __name__ == '__main__':
     job = MyJob()
     job.run()
-    # job.calculate(job.categories_tokens)
-
-    # with job.make_runner() as runner:
-    #     runner.run()
-    #     global_output = job.categories_tokens
-    #     job.calculate(global_output)
