@@ -730,7 +730,7 @@ class MyJob(MRJob):
             append = ''
             for token in self.categories_chi[category]:
                 append += ' ' + token['token'] + ':' + str(token['chi'])
-            yield category, append
+            yield '<' + category + '>', append
 
 
     def second_mapper(self, word, count):
