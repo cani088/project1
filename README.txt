@@ -1,0 +1,2 @@
+- To run the program on devset simply do 'bash run_devset.sh <output_file>'
+- To run the program on full dataset, do 'bash run_full.sh <output_file>'
