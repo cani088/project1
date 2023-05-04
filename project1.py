@@ -712,7 +712,7 @@ class MyJob(MRJob):
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
-            dict(sorted(self.categories_chi.items()))
+        dict(sorted(self.categories_chi.items()))
 
     def calculate(self):
         self.calculateChi()
