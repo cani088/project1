@@ -174,7 +174,7 @@ class MyJob(MRJob):
 
 if __name__ == '__main__':
     job = MyJob()
-    job.initFiles()
+    # job.initFiles()
     job.run()
     # job.calculate(job.categories_tokens)
 
