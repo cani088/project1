@@ -638,9 +638,10 @@ class MyJob(MRJob):
     }
 
     def initFiles(self):
-        with open(self.stopWordsPath, 'r') as file:
+        with open('stopwords.txt', 'r') as file:
             for word in file.read().split("\n"):
                 self.stopWordsHash[word] = 1
+
 
     def map_words_categories(self, _, line):
         for review in line.splitlines():
@@ -712,13 +713,12 @@ class MyJob(MRJob):
             self.categories_chi[category].sort(key=lambda x: x['chi'], reverse=True)
             if len(self.categories_chi[category]) > 76:
                 self.categories_chi[category] = self.categories_chi[category][0:75]
-        dict(sorted(self.categories_chi.items()))
 
     def calculate(self):
         self.calculateChi()
         self.sortTokens()
 
-        for category in self.categories_chi:
+        for category in dict(sorted(self.categories_chi.items())):
             append = ''
             for token in self.categories_chi[category]:
                 append += ' ' + token['token'] + ':' + str(token['chi'])
@@ -742,7 +742,7 @@ class MyJob(MRJob):
     def steps(self):
         return [
             MRStep(
-                # mapper_init=self.initFiles,
+                mapper_init=self.initFiles,
                 mapper=self.map_words_categories,
                 combiner=self.combiner_count_words,
                 reducer=self.reducer_count_words,
