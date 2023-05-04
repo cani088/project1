@@ -169,7 +169,7 @@ class MyJob(MRJob):
     def steps(self):
         return [
             MRStep(
-                mapper_init=self.initFiles,
+                # mapper_init=self.initFiles,
                 mapper=self.map_words_categories,
                 combiner=self.combiner_count_words,
                 reducer=self.reducer_count_words,
